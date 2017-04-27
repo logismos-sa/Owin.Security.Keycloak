@@ -362,7 +362,7 @@ namespace KeycloakIdentityModel
             if (parameters.PostLogoutRedirectUrl != null &&
                 !Uri.IsWellFormedUriString(parameters.PostLogoutRedirectUrl, UriKind.RelativeOrAbsolute))
                 throw new ArgumentException(nameof(parameters.PostLogoutRedirectUrl));
-
+            var logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
             // Attempt to refresh OIDC metadata from endpoint (on separate thread)
             try
             {
@@ -370,6 +370,7 @@ namespace KeycloakIdentityModel
             }
             catch (Exception exception)
             {
+                logger.Error($"Invalid Keycloak server parameters specified: See inner for server error: {exception.InnerException}");
                 throw new ArgumentException("Invalid Keycloak server parameters specified: See inner for server error",
                     exception);
             }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using KeycloakIdentityModel.Models.Configuration;
@@ -24,6 +25,8 @@ namespace KeycloakIdentityModel.Utilities
         // Thread-safe pipeline locks
         private bool _cacheRefreshing;
         private DateTime _nextCachedRefreshTime;
+
+        //private static readonly log4net.ILog Logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
         protected OidcDataManager(IKeycloakParameters options)
         {
@@ -182,6 +185,7 @@ namespace KeycloakIdentityModel.Utilities
 
                 // Update refresh time
                 _nextCachedRefreshTime = DateTime.Now.Add(_options.MetadataRefreshInterval);
+
             }
             catch (Exception exception)
             {
@@ -189,6 +193,42 @@ namespace KeycloakIdentityModel.Utilities
                 throw new Exception(
                     $"RefreshMetadataAsync: Metadata address returned incomplete data ('{MetadataEndpoint}')", exception);
             }
+        }
+
+        /// <summary>
+        /// Perform logout of the User entity with the specified <param name="refreshToken"></param>
+        /// </summary>
+        /// <param name="refreshToken">Claims refresh token</param>
+        /// <param name="options"></param>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        public static async Task<string> HttpLogoutPost(string refreshToken, IKeycloakParameters options, Uri uri)
+        {
+            var logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+            var httpClient = new HttpClient();
+            StringContent authContent = new StringContent("refresh_token=" + refreshToken, Encoding.UTF8, "application/x-www-form-urlencoded");
+            httpClient.DefaultRequestHeaders.Remove("Authorization");
+            httpClient.DefaultRequestHeaders.Add("Authorization", "Basic " +
+                                                                  Convert.ToBase64String(
+                                                                      Encoding.UTF8.GetBytes(
+                                                                          $"{options.ClientId}:{options.ClientSecret}")));
+
+
+            logger.Debug($"HttpLogoutPost options.ClientId {options.ClientId} to uri {uri}");
+            var response = await httpClient.PostAsync(uri, authContent);
+
+            // Fail on unreachable destination
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.Error($"HttpLogoutPost Logging out user: HTTP address unreachable ('{uri}')");
+                throw new Exception(
+                       $"Logging out user: HTTP address unreachable ('{uri}')");
+            }
+
+            httpClient.Dispose();
+
+            logger.Debug("HttpLogoutPost success.disposed client.");
+            return await response.Content.ReadAsStringAsync();
         }
 
         private static async Task<string> HttpApiGet(Uri uri)
@@ -352,7 +392,7 @@ namespace KeycloakIdentityModel.Utilities
             // Add optional parameters
             if (!string.IsNullOrWhiteSpace(idToken))
                 parameters.Add(OpenIdConnectParameterNames.IdTokenHint, idToken);
-
+            
             // Add postLogoutRedirectUrl to parameters
             if (string.IsNullOrEmpty(postLogoutRedirectUrl))
                 postLogoutRedirectUrl = _options.PostLogoutRedirectUrl;
@@ -360,7 +400,7 @@ namespace KeycloakIdentityModel.Utilities
             if (string.IsNullOrEmpty(postLogoutRedirectUrl)) // Double-check options for empty/null
                 postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority);
             else if (Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.Relative))
-                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + postLogoutRedirectUrl;
+                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + "/" + postLogoutRedirectUrl;
 
             if (!Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.RelativeOrAbsolute))
                 throw new Exception("Invalid PostLogoutRedirectUrl option: Not a valid relative/absolute URL");

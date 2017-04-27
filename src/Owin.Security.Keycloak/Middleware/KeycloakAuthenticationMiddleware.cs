@@ -25,10 +25,12 @@ namespace Owin.Security.Keycloak.Middleware
 
         private void ValidateOptions()
         {
+            var logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
             // Check to ensure authentication type isn't already used
             var authType = Options.AuthenticationType;
             if (!Global.KeycloakOptionStore.TryAdd(authType, Options))
             {
+                logger.Error($"KeycloakAuthenticationOptions: Authentication type '{authType}' already used; required unique");
                 throw new Exception(
                     $"KeycloakAuthenticationOptions: Authentication type '{authType}' already used; required unique");
             }
