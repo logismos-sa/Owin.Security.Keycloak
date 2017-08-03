@@ -61,7 +61,10 @@ namespace Owin.Security.Keycloak.Middleware
         {
             // Check SignInAs identity for authentication update
             if (Context.Authentication.User.Identity.IsAuthenticated)
+            {
+                _logger.Debug($"{Context.Authentication.User.Identity.Name} is authenticated,validate signin.");
                 await ValidateSignInAsIdentities();
+            }
 
             // Check for valid callback URI
             var callbackUri = await KeycloakIdentity.GenerateLoginCallbackUriAsync(Options, Request.Uri);
@@ -77,7 +80,7 @@ namespace Owin.Security.Keycloak.Middleware
                     // Validate passed state
                     var stateData = Global.StateCache.ReturnState(authResult.State) ?? new Dictionary<string, object>();
                     //throw new BadRequestException("Invalid state: Please reattempt the request");
-                    
+
                     // Process response and gather claims. If No state is found in cache we will log out the user from Keycloak and redirect him
                     //again for login. StateData must exist and match the oidc_state received from request
                     var kcIdentity =
@@ -94,10 +97,10 @@ namespace Owin.Security.Keycloak.Middleware
                     // Parse properties from state data
                     var properties = stateData[Constants.CacheTypes.AuthenticationProperties] as AuthenticationProperties;
                     
-                    //everything is ok until here, signin the user
+                    //everything is ok until here, sign in the user
                     Context.Authentication.User = new ClaimsPrincipal(identity);
                     SignInAsAuthentication(identity, properties, Options.SignInAsAuthenticationType);
-                    _logger.Debug($"Signed in user {identity.Name}");
+                    _logger.Debug($"Signed in user {identity.Name} with state data.");
 
                     // Trigger OnAuthenticated?
                     var eventArgs = new OnAuthenticatedEventArgs { RedirectUri = properties?.RedirectUri };
@@ -179,14 +182,14 @@ namespace Owin.Security.Keycloak.Middleware
                     ExpiresUtc = DateTime.Now.Add(Options.SignInAsAuthenticationExpiration)
                 };
             }
-
+            
             // Parse expiration date-time
             var expirations = new List<string>
             {
                 identity.Claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.RefreshTokenExpiration)?.Value,
                 identity.Claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.AccessTokenExpiration)?.Value
             };
-
+            
             foreach (var expStr in expirations)
             {
                 DateTime expDate;
@@ -216,7 +219,7 @@ namespace Owin.Security.Keycloak.Middleware
                     Context.Authentication.User = new ClaimsPrincipal(identity);
                     SignInAsAuthentication(identity, null, Options.SignInAsAuthenticationType);
 
-                    _logger.Debug($"Signing identity {identity.Name}");
+                    _logger.Debug($"Identity isTouched. Signing refreshed identity {identity.Name}");
                 }
                 catch (AuthenticationException)
                 {
@@ -271,7 +274,7 @@ namespace Owin.Security.Keycloak.Middleware
             };
             var state = Global.StateCache.CreateState(stateData);
 
-            _logger.Debug($"LoginRedirectAsync created state for uri {properties.RedirectUri} and redirecting");
+            _logger.Debug($"Login redirect async: created state for uri {properties.RedirectUri} and redirecting");
             // Redirect response to login
             Response.Redirect((await KeycloakIdentity.GenerateLoginUriAsync(Options, Request.Uri, state)).ToString());
         }
@@ -300,7 +303,7 @@ namespace Owin.Security.Keycloak.Middleware
             //    _logger.Debug($"ForceLogoutRedirectAsync user claim {claim.Type} - {claim.Value}");
             //}
           
-            _logger.Debug($"ForceLogoutRedirectAsync identity {identity.IsAuthenticated}");
+            _logger.Debug($"Force logout identity with isAuthenticated:{identity.IsAuthenticated}");
 
             Claim firstOrDefault = identity.Claims.FirstOrDefault(claim => claim.Type == "refresh_token");
             if (firstOrDefault != null)
@@ -313,11 +316,11 @@ namespace Owin.Security.Keycloak.Middleware
 
             if (challenge == null)
             {
-                _logger.Debug($"ForceLogoutRedirectAsync logged out {identity.Name}.Challenge is null.Return.");
+                _logger.Debug($"Force logged out {identity.Name}.Challenge is null.Return.");
                 return;
             }
 
-            _logger.Debug($"ForceLogoutRedirectAsync logged out {identity.Name}.Redirecting.");
+            _logger.Debug($"Force logged out {identity.Name}.Redirecting from challenge properties.");
             await LoginRedirectAsync(challenge.Properties);
         }
 

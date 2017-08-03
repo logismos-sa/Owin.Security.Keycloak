@@ -87,6 +87,10 @@ namespace Owin.Security.Keycloak.Middleware
             Options.KeycloakUrl = NormalizeUrl(Options.KeycloakUrl);
             Options.CallbackPath = NormalizeUrlPath(Options.CallbackPath);
 
+            //for more than 2 minutes set default value
+            if (TimeSpan.Compare(Options.RefreshBeforeTokenExpiration.Duration(), TimeSpan.FromSeconds(120).Duration()) > 0)
+                Options.RefreshBeforeTokenExpiration = TimeSpan.FromSeconds(30);
+
             // Final parameter validation
             KeycloakIdentity.ValidateParameters(Options);
         }

@@ -198,5 +198,15 @@ namespace Owin.Security.Keycloak
         ///     OPTIONAL: Triggers <see cref="Action"/> to fire after a successful authentication.
         /// </summary>
         public Action<IOwinContext, OnAuthenticatedEventArgs> OnAuthenticated { get; set; }
+
+        /// <summary>
+        /// OPTIONAL.ADV: Triggers the Identity to be refreshed before the access token expires.
+        /// </summary>
+        /// <remarks>
+        ///     - Use TimeSpace.Zero for no early refreshing
+        ///     - Max value up to 2 minutes.
+        ///     - Default: 30 seconds
+        /// </remarks>
+        public TimeSpan RefreshBeforeTokenExpiration { get; set; } = TimeSpan.FromSeconds(30);
     }
 }

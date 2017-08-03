@@ -130,5 +130,7 @@ namespace KeycloakIdentityModel.Models.Configuration
 
         public string CallbackPath { get; set; }
         public string ResponseType { get; set; }
+        
+        TimeSpan IKeycloakParameters.RefreshBeforeTokenExpiration { get; set; } = TimeSpan.FromSeconds(30);
     }
 }
