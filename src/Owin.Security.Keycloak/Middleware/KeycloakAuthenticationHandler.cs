@@ -62,7 +62,6 @@ namespace Owin.Security.Keycloak.Middleware
             // Check SignInAs identity for authentication update
             if (Context.Authentication.User.Identity.IsAuthenticated)
             {
-                _logger.Debug($"{Context.Authentication.User.Identity.Name} is authenticated,validate signin.");
                 await ValidateSignInAsIdentities();
             }
 
