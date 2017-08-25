@@ -115,7 +115,7 @@ namespace Owin.Security.Keycloak.Middleware
                 }
                 catch (Exception exception)
                 {
-                    _logger.Debug($"Returning false for {exception.Message} inner exception {exception.InnerException} / stack {exception.StackTrace}");
+                    _logger.Debug($"Returning false for {exception.Message} {exception.StackTrace}");
                     await GenerateErrorResponseAsync(HttpStatusCode.InternalServerError, "Internal Server Error", exception.Message);
                     return false;
                 }
