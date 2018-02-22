@@ -328,9 +328,6 @@ namespace KeycloakIdentityModel.Utilities
             if (!string.IsNullOrWhiteSpace(_options.ClientId))
             {
                 parameters.Add(OpenIdConnectParameterNames.ClientId, _options.ClientId);
-
-                if (!string.IsNullOrWhiteSpace(_options.ClientSecret))
-                    parameters.Add(OpenIdConnectParameterNames.ClientSecret, _options.ClientSecret);
             }
 
             if (!string.IsNullOrWhiteSpace(_options.IdentityProvider))
