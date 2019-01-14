@@ -62,6 +62,11 @@ namespace KeycloakIdentityModel.Utilities.ClaimMapping
             },
             new ClaimLookup
             {
+                ClaimName = ClaimTypes.Locality,
+                JSelectQuery = "locale",
+            },
+            new ClaimLookup
+            {
                 ClaimName = ClaimTypes.Role,
                 JSelectQuery = "resource_access.{gid}.roles"
             },
