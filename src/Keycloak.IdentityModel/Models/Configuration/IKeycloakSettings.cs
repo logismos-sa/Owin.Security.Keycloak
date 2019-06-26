@@ -16,11 +16,14 @@ namespace Keycloak.IdentityModel.Models.Configuration
         bool AllowUnsignedTokens { get; }
         bool DisableIssuerValidation { get; }
         bool DisableAudienceValidation { get; }
-        TimeSpan TokenClockSkew { get; }
         bool UseRemoteTokenValidation { get; }
+        TimeSpan TokenClockSkew { get; }
         TimeSpan MetadataRefreshInterval { get; }
+        TimeSpan RefreshBeforeTokenExpiration { get; set; }
         string CallbackPath { get; }
         string ResponseType { get; }
-        TimeSpan RefreshBeforeTokenExpiration { get; set; }
+        bool DisableRefreshTokenSignatureValidation { get; }
+        bool DisableAllRefreshTokenValidation { get; }
+        string AuthResponseErrorRedirectUrl { get; }
     }
 }

@@ -107,7 +107,7 @@ namespace Keycloak.IdentityModel.Utilities
 
             if (securityToken.Length > MaximumTokenSizeInBytes)
             {
-                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, ErrorMessages.IDX10209,
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, Constants.ErrorMessages.IDX10209,
                     securityToken.Length, MaximumTokenSizeInBytes));
             }
 
@@ -138,7 +138,7 @@ namespace Keycloak.IdentityModel.Utilities
                     if (!validationParameters.LifetimeValidator(notBefore, expires, jwt, validationParameters))
                     {
                         throw new SecurityTokenInvalidLifetimeException(string.Format(CultureInfo.InvariantCulture,
-                            ErrorMessages.IDX10230, jwt));
+                            Constants.ErrorMessages.IDX10230, jwt));
                     }
                 }
                 else
@@ -154,7 +154,7 @@ namespace Keycloak.IdentityModel.Utilities
                     if (!validationParameters.AudienceValidator(jwt.Audiences, jwt, validationParameters))
                     {
                         throw new SecurityTokenInvalidAudienceException(string.Format(CultureInfo.InvariantCulture,
-                            ErrorMessages.IDX10231, jwt));
+                            Constants.ErrorMessages.IDX10231, jwt));
                     }
                 }
                 else
