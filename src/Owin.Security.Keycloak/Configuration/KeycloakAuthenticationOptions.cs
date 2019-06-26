@@ -1,6 +1,6 @@
 ﻿using System;
-using KeycloakIdentityModel.Models.Configuration;
-using KeycloakIdentityModel.Models.EventArgs;
+using Keycloak.IdentityModel.Models.Configuration;
+using Keycloak.IdentityModel.Models.EventArgs;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
 
