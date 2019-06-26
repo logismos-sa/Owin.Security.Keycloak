@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Keycloak.IdentityModel.Models.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Keycloak.IdentityModel.Models.Configuration;
-using Microsoft.IdentityModel;
 
 namespace Keycloak.IdentityModel.Utilities
 {
@@ -67,7 +67,7 @@ namespace Keycloak.IdentityModel.Utilities
                 ValidIssuer = uriManager.GetIssuer(),
                 ClockSkew = options.TokenClockSkew,
                 ValidAudiences = new List<string> {"null", options.ClientId},
-                IssuerSigningTokens = uriManager.GetJsonWebKeys().GetSigningTokens(),
+                IssuerSigningKeys = uriManager.GetJsonWebKeys().GetSigningKeys(),
                 AuthenticationType = options.AuthenticationType // Not used
             };
 

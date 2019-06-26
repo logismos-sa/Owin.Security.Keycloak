@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IdentityModel;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Security.Authentication;
 using System.Security.Claims;
 using System.Threading.Tasks;

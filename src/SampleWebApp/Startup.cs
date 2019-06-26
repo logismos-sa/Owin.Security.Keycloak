@@ -34,7 +34,7 @@ namespace SampleWebApp
 				SignInAsAuthenticationType = persistentAuthType, // Not required with SetDefaultSignInAsAuthenticationType
 																												 //Token validation options - these are all set to defaults
 				AllowUnsignedTokens = false,
-				DisableIssuerSigningKeyValidation = false,
+				DisableTokenSignatureValidation = false,
 				DisableIssuerValidation = false,
 				DisableAudienceValidation = false,
 
