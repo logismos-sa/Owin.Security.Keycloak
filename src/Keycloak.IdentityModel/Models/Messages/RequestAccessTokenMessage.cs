@@ -32,7 +32,8 @@ namespace Keycloak.IdentityModel.Models.Messages
             var uriManager = await OidcDataManager.GetCachedContextAsync(Options);
             var response = await SendHttpPostRequest(uriManager.GetTokenEndpoint(),
                 uriManager.BuildAccessTokenEndpointContent(BaseUri, AuthResponse.Code));
-            return await response.Content.ReadAsStringAsync();
+
+            return await ReadHttpResponseAsync(response);
         }
     }
 }

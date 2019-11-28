@@ -29,7 +29,8 @@ namespace Keycloak.IdentityModel.Models.Messages
                 await
                     SendHttpPostRequest(uriManager.GetTokenEndpoint(),
                         uriManager.BuildRefreshTokenEndpointContent(RefreshToken));
-            return await response.Content.ReadAsStringAsync();
+            
+            return await ReadHttpResponseAsync(response);
         }
     }
 }

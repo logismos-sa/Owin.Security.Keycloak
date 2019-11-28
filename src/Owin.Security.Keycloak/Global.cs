@@ -1,6 +1,5 @@
 ﻿using System.Collections.Concurrent;
 using System.Reflection;
-using Keycloak.IdentityModel;
 using Keycloak.IdentityModel.Utilities.Caching;
 
 namespace Owin.Security.Keycloak

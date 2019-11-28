@@ -1,5 +1,7 @@
 ﻿using System;
 using Keycloak.IdentityModel.Models.Configuration;
+using Keycloak.IdentityModel.Models.EventArgs;
+using Microsoft.Owin;
 using Microsoft.Owin.Security;
 
 namespace Owin.Security.Keycloak
@@ -133,7 +135,7 @@ namespace Owin.Security.Keycloak
         ///     - If enabled, this will create a MASSIVE security hole
         ///     - Default: False
         /// </remarks>
-        public bool DisableIssuerSigningKeyValidation { get; set; } = false;
+        public bool DisableTokenSignatureValidation { get; set; } = false;
 
         /// <summary>
         ///     OPTIONAL.ADV: Whether to allow the extension to accept unsigned tokens
@@ -192,7 +194,22 @@ namespace Owin.Security.Keycloak
         public string CallbackPath { get; set; }
         public string ResponseType { get; set; }
 
-       /// <summary>
+        /// <summary>
+        ///     OPTIONAL: Triggers <see cref="Action"/> to fire after a successful authentication.
+        /// </summary>
+        public Action<IOwinContext, OnAuthenticatedEventArgs> OnAuthenticated { get; set; }
+
+        /// <summary>
+        /// OPTIONAL.ADV: Triggers the Identity to be refreshed before the access token expires.
+        /// </summary>
+        /// <remarks>
+        ///     - Use TimeSpace.Zero for no early refreshing
+        ///     - Max value up to 2 minutes.
+        ///     - Default: 30 seconds
+        /// </remarks>
+        public TimeSpan RefreshBeforeTokenExpiration { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
         ///     OPTIONAL.ADV: Disable signature validation of Refresh tokens.
         /// </summary>
         /// <remarks>
@@ -225,6 +242,5 @@ namespace Owin.Security.Keycloak
         ///     - Default: If not specified, an exception will be thrown if and error from Keycloak authentication is received.
         /// </remarks>
         public string AuthResponseErrorRedirectUrl { get; set; }
-
     }
 }

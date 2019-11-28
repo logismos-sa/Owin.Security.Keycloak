@@ -25,10 +25,12 @@ namespace Owin.Security.Keycloak.Middleware
 
         private void ValidateOptions()
         {
+            var logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
             // Check to ensure authentication type isn't already used
             var authType = Options.AuthenticationType;
             if (!Global.KeycloakOptionStore.TryAdd(authType, Options))
             {
+                logger.Error($"KeycloakAuthenticationOptions: Authentication type '{authType}' already used; required unique");
                 throw new Exception(
                     $"KeycloakAuthenticationOptions: Authentication type '{authType}' already used; required unique");
             }
@@ -84,6 +86,10 @@ namespace Owin.Security.Keycloak.Middleware
 
             Options.KeycloakUrl = NormalizeUrl(Options.KeycloakUrl);
             Options.CallbackPath = NormalizeUrlPath(Options.CallbackPath);
+
+            //for more than 2 minutes set default value
+            if (TimeSpan.Compare(Options.RefreshBeforeTokenExpiration.Duration(), TimeSpan.FromSeconds(120).Duration()) > 0)
+                Options.RefreshBeforeTokenExpiration = TimeSpan.FromSeconds(30);
 
             // Final parameter validation
             KeycloakIdentity.ValidateParameters(Options);

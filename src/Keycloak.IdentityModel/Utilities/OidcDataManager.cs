@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Keycloak.IdentityModel.Models.Configuration;
@@ -26,6 +27,8 @@ namespace Keycloak.IdentityModel.Utilities
         private bool _cacheRefreshing;
         private DateTime _nextCachedRefreshTime;
 
+        //private static readonly log4net.ILog Logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         protected OidcDataManager(IKeycloakParameters options)
         {
             _options = options;
@@ -33,10 +36,12 @@ namespace Keycloak.IdentityModel.Utilities
 
             Authority = _options.KeycloakUrl + "/realms/" + _options.Realm;
             MetadataEndpoint = new Uri(Authority + "/" + Protocols.OpenIdProviderMetadataNames.Discovery);
+            TokenValidationEndpoint = new Uri(Authority + "/tokens/validate");
         }
 
         public string Authority { get; }
         public Uri MetadataEndpoint { get; }
+        public Uri TokenValidationEndpoint { get; }
 
         private class Metadata
         {
@@ -51,7 +56,9 @@ namespace Keycloak.IdentityModel.Utilities
             public Uri TokenEndpoint;
             public Uri UserInfoEndpoint;
         }
-		
+
+        #region Context Caching
+
         public static Task ValidateCachedContextAsync(IKeycloakParameters options)
         {
             var context = GetCachedContext(options.AuthenticationType);
@@ -111,7 +118,11 @@ namespace Keycloak.IdentityModel.Utilities
             if (preload) await newContext.ValidateCachedContextAsync();
             return newContext;
         }
-		
+
+        #endregion
+
+        #region Metadata Handling
+
         public async Task<bool> TryRefreshMetadataAsync()
         {
             try
@@ -175,6 +186,7 @@ namespace Keycloak.IdentityModel.Utilities
 
                 // Update refresh time
                 _nextCachedRefreshTime = DateTime.Now.Add(_options.MetadataRefreshInterval);
+
             }
             catch (Exception exception)
             {
@@ -182,6 +194,42 @@ namespace Keycloak.IdentityModel.Utilities
                 throw new Exception(
                     $"RefreshMetadataAsync: Metadata address returned incomplete data ('{MetadataEndpoint}')", exception);
             }
+        }
+
+        /// <summary>
+        /// Perform logout of the User entity with the specified <param name="refreshToken"></param>
+        /// </summary>
+        /// <param name="refreshToken">Claims refresh token</param>
+        /// <param name="options"></param>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        public static async Task<string> HttpLogoutPost(string refreshToken, IKeycloakParameters options, Uri uri)
+        {
+            var logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+            var httpClient = new HttpClient();
+            StringContent authContent = new StringContent("refresh_token=" + refreshToken, Encoding.UTF8, "application/x-www-form-urlencoded");
+            httpClient.DefaultRequestHeaders.Remove("Authorization");
+            httpClient.DefaultRequestHeaders.Add("Authorization", "Basic " +
+                                                                  Convert.ToBase64String(
+                                                                      Encoding.UTF8.GetBytes(
+                                                                          $"{options.ClientId}:{options.ClientSecret}")));
+
+
+            logger.Debug($"HttpLogoutPost options.ClientId {options.ClientId} to uri {uri}");
+            var response = await httpClient.PostAsync(uri, authContent);
+
+            // Fail on unreachable destination
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.Error($"HttpLogoutPost Logging out user: HTTP address unreachable ('{uri}')");
+                throw new Exception(
+                       $"Logging out user: HTTP address unreachable ('{uri}')");
+            }
+
+            httpClient.Dispose();
+
+            logger.Debug("HttpLogoutPost success.disposed client.");
+            return await response.Content.ReadAsStringAsync();
         }
 
         private static async Task<string> HttpApiGet(Uri uri)
@@ -196,7 +244,11 @@ namespace Keycloak.IdentityModel.Utilities
 
             return await response.Content.ReadAsStringAsync();
         }
-		
+
+        #endregion
+
+        #region Metadata Info Getters
+
         public Uri GetCallbackUri(Uri baseUri)
         {
             return new Uri(baseUri.GetLeftPart(UriPartial.Authority) + _options.CallbackPath);
@@ -257,7 +309,11 @@ namespace Keycloak.IdentityModel.Utilities
                 return _metadata.Jwks;
             }
         }
-		
+
+        #endregion
+
+        #region Endpoint Content Builders
+
         public HttpContent BuildAuthorizationEndpointContent(Uri requestUri, string state)
         {
             // Create parameter dictionary
@@ -334,7 +390,7 @@ namespace Keycloak.IdentityModel.Utilities
             // Add optional parameters
             if (!string.IsNullOrWhiteSpace(idToken))
                 parameters.Add(Protocols.OpenIdConnectParameterNames.IdTokenHint, idToken);
-
+            
             // Add postLogoutRedirectUrl to parameters
             if (string.IsNullOrEmpty(postLogoutRedirectUrl))
                 postLogoutRedirectUrl = _options.PostLogoutRedirectUrl;
@@ -342,7 +398,7 @@ namespace Keycloak.IdentityModel.Utilities
             if (string.IsNullOrEmpty(postLogoutRedirectUrl)) // Double-check options for empty/null
                 postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority);
             else if (Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.Relative))
-                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + postLogoutRedirectUrl;
+                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + "/" + postLogoutRedirectUrl;
 
             if (!Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.RelativeOrAbsolute))
                 throw new Exception("Invalid PostLogoutRedirectUrl option: Not a valid relative/absolute URL");
@@ -351,6 +407,7 @@ namespace Keycloak.IdentityModel.Utilities
 
             return new FormUrlEncodedContent(parameters);
         }
-		
+
+        #endregion
     }
 }

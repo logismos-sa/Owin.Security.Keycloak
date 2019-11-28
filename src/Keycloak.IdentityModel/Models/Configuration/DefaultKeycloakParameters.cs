@@ -72,7 +72,7 @@ namespace Keycloak.IdentityModel.Models.Configuration
         ///     - If enabled, this will create a MASSIVE security hole
         ///     - Default: False
         /// </remarks>
-        public bool DisableIssuerSigningKeyValidation { get; set; } = false;
+        public bool DisableTokenSignatureValidation { get; set; } = false;
 
         /// <summary>
         ///     OPTIONAL.ADV: Whether to allow the extension to accept unsigned tokens
@@ -164,6 +164,8 @@ namespace Keycloak.IdentityModel.Models.Configuration
         ///     - Default: If not specified, an exception will be thrown if and error from Keycloak authentication is received.
         /// </remarks>
         public string AuthResponseErrorRedirectUrl { get; set; }
+
+        TimeSpan IKeycloakParameters.RefreshBeforeTokenExpiration { get; set; } = TimeSpan.FromSeconds(30);
 
     }
 }

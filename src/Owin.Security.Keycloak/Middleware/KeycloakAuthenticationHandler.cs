@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IdentityModel;
 using System.Linq;
@@ -9,15 +10,20 @@ using System.Security.Authentication;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Keycloak.IdentityModel;
+using Keycloak.IdentityModel.Models.EventArgs;
 using Keycloak.IdentityModel.Models.Responses;
+using Keycloak.IdentityModel.Utilities;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
+using Microsoft.Owin.Security.DataHandler;
 using Microsoft.Owin.Security.Infrastructure;
 
 namespace Owin.Security.Keycloak.Middleware
 {
     internal class KeycloakAuthenticationHandler : AuthenticationHandler<KeycloakAuthenticationOptions>
     {
+        private readonly log4net.ILog _logger = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+
         protected override async Task<AuthenticationTicket> AuthenticateCoreAsync()
         {
             // Bearer token authentication override
@@ -51,18 +57,23 @@ namespace Owin.Security.Keycloak.Middleware
             return null;
         }
 
+        [DebuggerStepThrough]
         public override async Task<bool> InvokeAsync()
         {
             // Check SignInAs identity for authentication update
             if (Context.Authentication.User.Identity.IsAuthenticated)
+            {
                 await ValidateSignInAsIdentities();
+            }
 
             // Check for valid callback URI
             var callbackUri = await KeycloakIdentity.GenerateLoginCallbackUriAsync(Options, Request.Uri);
+
             if (!Options.ForceBearerTokenAuth && Request.Uri.GetLeftPart(UriPartial.Path) == callbackUri.ToString())
             {
                 // Create authorization result from query
                 var authResult = new AuthorizationResponse(Request.Uri.Query);
+                _logger.Debug($"Request from {Request.Uri}");
 
                 // If the authorization response returned a "error" query parameter (instead of "code" + "state"), redirect to a configured URL.
                 // This could occur if the login is aborted by the user.
@@ -71,38 +82,50 @@ namespace Owin.Security.Keycloak.Middleware
                     HandleAuthError(authResult);
                     return true;
                 }
-
                 try
                 {
                     // Validate passed state
-                    var stateData = Global.StateCache.ReturnState(authResult.State);
-                    if (stateData == null)
-                        throw new BadRequestException("Invalid state: Please reattempt the request");
+                    var stateData = Global.StateCache.ReturnState(authResult.State) ?? new Dictionary<string, object>();
+                    //throw new BadRequestException("Invalid state: Please reattempt the request");
 
-                    // Parse properties from state data
-                    var properties =
-                        stateData[Constants.CacheTypes.AuthenticationProperties] as AuthenticationProperties ??
-                        new AuthenticationProperties();
-
-                    // Process response
+                    // Process response and gather claims. If No state is found in cache we will log out the user from Keycloak and redirect him
+                    //again for login. StateData must exist and match the oidc_state received from request
                     var kcIdentity =
                         await KeycloakIdentity.ConvertFromAuthResponseAsync(Options, authResult, Request.Uri);
                     var identity = await kcIdentity.ToClaimsIdentityAsync();
-                    Context.Authentication.User.AddIdentity(identity);
+                    
+                    if (!stateData.ContainsKey(Constants.CacheTypes.AuthenticationProperties))
+                    {
+                        await ForceLogoutRedirectAsync(identity);
+                        _logger.Debug($"State data is null.Logging out user and redirecting");
+                        return true;
+                    }
+
+                    // Parse properties from state data
+                    var properties = stateData[Constants.CacheTypes.AuthenticationProperties] as AuthenticationProperties;
+                    
+                    //everything is ok until here, sign in the user
+                    Context.Authentication.User = new ClaimsPrincipal(identity);
                     SignInAsAuthentication(identity, properties, Options.SignInAsAuthenticationType);
+                    _logger.Debug($"Signed in user {identity.Name} with state data.");
+
+                    // Trigger OnAuthenticated?
+                    var eventArgs = new OnAuthenticatedEventArgs { RedirectUri = properties?.RedirectUri };
+                    Options.OnAuthenticated?.Invoke(Context, eventArgs);
 
                     // Redirect back to the original secured resource, if any
-                    if (!string.IsNullOrWhiteSpace(properties.RedirectUri) &&
-                        Uri.IsWellFormedUriString(properties.RedirectUri, UriKind.Absolute))
+                    if (!string.IsNullOrWhiteSpace(eventArgs.RedirectUri) &&
+                        Uri.IsWellFormedUriString(eventArgs.RedirectUri, UriKind.Absolute))
                     {
-                        Response.Redirect(properties.RedirectUri);
+                        Response.Redirect(eventArgs.RedirectUri);
                         return true;
                     }
                 }
-                catch (BadRequestException exception)
+                catch (Exception exception)
                 {
-                    await GenerateErrorResponseAsync(HttpStatusCode.BadRequest, "Bad Request", exception.Message);
-                    return true;
+                    _logger.Debug($"Returning false for {exception.Message} {exception.StackTrace}");
+                    await GenerateErrorResponseAsync(HttpStatusCode.InternalServerError, "Internal Server Error", exception.Message);
+                    return false;
                 }
             }
 
@@ -138,6 +161,7 @@ namespace Owin.Security.Keycloak.Middleware
                 var challenge = Helper.LookupChallenge(Options.AuthenticationType, Options.AuthenticationMode);
                 if (challenge == null) return;
 
+                _logger.Debug($"ApplyResponseChallengeAsync for 401.Redirecting");
                 await LoginRedirectAsync(challenge.Properties);
             }
         }
@@ -147,7 +171,7 @@ namespace Owin.Security.Keycloak.Middleware
         private void SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-            if (!string.IsNullOrWhiteSpace(signInAuthType) && !signInAuthType.Equals(Options.AuthenticationType, StringComparison.OrdinalIgnoreCase)) return;
+            if (signInAuthType == Options.AuthenticationType) return;
 
             var signInIdentity = signInAuthType != null
                 ? new ClaimsIdentity(identity.Claims, signInAuthType, identity.NameClaimType, identity.RoleClaimType)
@@ -165,14 +189,14 @@ namespace Owin.Security.Keycloak.Middleware
                     ExpiresUtc = DateTime.Now.Add(Options.SignInAsAuthenticationExpiration)
                 };
             }
-
+            
             // Parse expiration date-time
             var expirations = new List<string>
             {
                 identity.Claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.RefreshTokenExpiration)?.Value,
                 identity.Claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.AccessTokenExpiration)?.Value
             };
-
+            
             foreach (var expStr in expirations)
             {
                 DateTime expDate;
@@ -201,6 +225,8 @@ namespace Owin.Security.Keycloak.Middleware
                     var identity = await kcIdentity.ToClaimsIdentityAsync();
                     Context.Authentication.User = new ClaimsPrincipal(identity);
                     SignInAsAuthentication(identity, null, Options.SignInAsAuthenticationType);
+
+                    _logger.Debug($"Identity isTouched. Signing refreshed identity {identity.Name}");
                 }
                 catch (AuthenticationException)
                 {
@@ -236,7 +262,6 @@ namespace Owin.Security.Keycloak.Middleware
             response.ContentType = "text/plain";
             await task;
         }
-
         /// <summary>
         /// Handle the Keycloak authentication redirect to the application when it has specified an error (query parameter)
         /// </summary>
@@ -281,7 +306,6 @@ namespace Owin.Security.Keycloak.Middleware
             }
 
         }
-
         #endregion
 
         #region OIDC Helper Functions
@@ -300,6 +324,7 @@ namespace Owin.Security.Keycloak.Middleware
             };
             var state = Global.StateCache.CreateState(stateData);
 
+            _logger.Debug($"Login redirect async: created state for uri {properties.RedirectUri} and redirecting");
             // Redirect response to login
             Response.Redirect((await KeycloakIdentity.GenerateLoginUriAsync(Options, Request.Uri, state)).ToString());
         }
@@ -311,6 +336,42 @@ namespace Owin.Security.Keycloak.Middleware
                 (await
                     KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri))
                     .ToString());
+        }
+
+        /// <summary>
+        /// Method logs generates the logout url for the realm and performs a user log out 
+        /// and issues a redirection to the login page for the user to enter credentials again.
+        /// </summary>
+        /// <param name="identity">Current identity signed in keycloak. It will be forced log out.</param>
+        /// <returns>Redirection to login page</returns>
+        private async Task ForceLogoutRedirectAsync(ClaimsIdentity identity)
+        {
+            // generate logout uri
+            var uri = await KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri);
+            //foreach (var claim in identity.Claims)
+            //{
+            //    _logger.Debug($"ForceLogoutRedirectAsync user claim {claim.Type} - {claim.Value}");
+            //}
+          
+            _logger.Debug($"Force logout identity with isAuthenticated:{identity.IsAuthenticated}");
+
+            Claim firstOrDefault = identity.Claims.FirstOrDefault(claim => claim.Type == "refresh_token");
+            if (firstOrDefault != null)
+            {
+                await OidcDataManager.HttpLogoutPost(firstOrDefault.Value, Options, uri);
+            }
+            
+            //redirect to relogin
+            var challenge = Helper.LookupChallenge(Options.AuthenticationType, Options.AuthenticationMode);
+
+            if (challenge == null)
+            {
+                _logger.Debug($"Force logged out {identity.Name}.Challenge is null.Return.");
+                return;
+            }
+
+            _logger.Debug($"Force logged out {identity.Name}.Redirecting from challenge properties.");
+            await LoginRedirectAsync(challenge.Properties);
         }
 
         #endregion

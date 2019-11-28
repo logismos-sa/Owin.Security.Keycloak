@@ -61,10 +61,20 @@ namespace Keycloak.IdentityModel.Utilities.ClaimMapping
             },
             new ClaimLookup
             {
+                ClaimName = ClaimTypes.Locality,
+                JSelectQuery = "locale",
+            },
+            new ClaimLookup
+            {
                 ClaimName = ClaimTypes.Role,
                 JSelectQuery = "resource_access.{gid}.roles"
+            },
+            new ClaimLookup
+            {
+                ClaimName = ClaimTypes.Role,
+                JSelectQuery = "realm_access.roles",
             }
-        };
+    };
 
         public static IEnumerable<ClaimLookup> IdTokenMappings { get; } = new List<ClaimLookup>();
 
