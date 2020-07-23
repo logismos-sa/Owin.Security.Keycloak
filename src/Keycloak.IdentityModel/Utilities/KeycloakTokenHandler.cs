@@ -70,8 +70,12 @@ namespace Keycloak.IdentityModel.Utilities
                 IssuerSigningKeys = uriManager.GetJsonWebKeys().GetSigningKeys(),
                 AuthenticationType = options.AuthenticationType // Not used
             };
-            bool disableSignatureValidation = isRefreshToken && options.DisableRefreshTokenSignatureValidation;
-            return ValidateToken(jwt, tokenValidationParameters, disableSignatureValidation);
+            bool disableAllValidation = isRefreshToken && options.DisableAllRefreshTokenValidation;
+            if (disableAllValidation)
+                return ReadJwtToken(jwt);
+
+            bool disableOnlySignatureValidation = isRefreshToken && options.DisableRefreshTokenSignatureValidation;
+            return ValidateToken(jwt, tokenValidationParameters, disableOnlySignatureValidation);
         }
 
         protected bool TryValidateToken(string securityToken, TokenValidationParameters validationParameters,
