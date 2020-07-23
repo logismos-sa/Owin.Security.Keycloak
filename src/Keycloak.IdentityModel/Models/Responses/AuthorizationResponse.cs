@@ -13,7 +13,6 @@ namespace Keycloak.IdentityModel.Models.Responses
 
             if (IsSuccessfulResponse())
             {
-                throw new ArgumentException("Invalid query string used to instantiate an AuthorizationResponse");
                 if (!ValidateCodeAndState())
                 {
                     throw new ArgumentException("Invalid query string used to instantiate an AuthorizationResponse");
