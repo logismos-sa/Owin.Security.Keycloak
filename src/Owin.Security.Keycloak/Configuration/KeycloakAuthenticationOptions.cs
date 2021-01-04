@@ -242,5 +242,7 @@ namespace Owin.Security.Keycloak
         ///     - Default: If not specified, an exception will be thrown if and error from Keycloak authentication is received.
         /// </remarks>
         public string AuthResponseErrorRedirectUrl { get; set; }
+
+        public string UiLocales { get; set; }
     }
 }

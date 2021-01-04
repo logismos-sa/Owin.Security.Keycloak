@@ -167,5 +167,7 @@ namespace Keycloak.IdentityModel.Models.Configuration
 
         TimeSpan IKeycloakParameters.RefreshBeforeTokenExpiration { get; set; } = TimeSpan.FromSeconds(30);
 
+        public string UiLocales { get; set; }
+
     }
 }
