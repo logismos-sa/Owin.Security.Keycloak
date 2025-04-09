@@ -159,6 +159,7 @@ namespace Owin.Security.Keycloak.Middleware
                 }
 
                 var challenge = Helper.LookupChallenge(Options.AuthenticationType, Options.AuthenticationMode);
+                
                 if (challenge == null) return;
 
                 _logger.Debug($"ApplyResponseChallengeAsync for 401.Redirecting");
@@ -171,7 +172,9 @@ namespace Owin.Security.Keycloak.Middleware
         private void SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-            if (signInAuthType == Options.AuthenticationType) return;
+            // adding commit 17b4dd6e7ea700686581f62a808037b787f0861c that was missing
+            if (!string.IsNullOrWhiteSpace(signInAuthType) && !signInAuthType.Equals(Options.AuthenticationType, StringComparison.OrdinalIgnoreCase)) return;
+
 
             var signInIdentity = signInAuthType != null
                 ? new ClaimsIdentity(identity.Claims, signInAuthType, identity.NameClaimType, identity.RoleClaimType)
