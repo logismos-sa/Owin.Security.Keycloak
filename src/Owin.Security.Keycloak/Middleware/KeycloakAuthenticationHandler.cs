@@ -6,8 +6,10 @@ using System.IdentityModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.Remoting.Contexts;
 using System.Security.Authentication;
 using System.Security.Claims;
+using System.Security.Principal;
 using System.Threading.Tasks;
 using Keycloak.IdentityModel;
 using Keycloak.IdentityModel.Models.EventArgs;
@@ -172,7 +174,7 @@ namespace Owin.Security.Keycloak.Middleware
         private void SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-            // adding commit 17b4dd6e7ea700686581f62a808037b787f0861c that was missing
+            // adding missing change from commit 17b4dd6e7ea700686581f62a808037b787f0861c 
             if (!string.IsNullOrWhiteSpace(signInAuthType) && !signInAuthType.Equals(Options.AuthenticationType, StringComparison.OrdinalIgnoreCase)) return;
 
 
@@ -334,10 +336,12 @@ namespace Owin.Security.Keycloak.Middleware
 
         private async Task LogoutRedirectAsync()
         {
+
+            string idToken = Context.Authentication.User.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.IdToken)?.Value;
             // Redirect response to logout
             Response.Redirect(
                 (await
-                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri))
+                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri, null, idToken))
                     .ToString());
         }
 
@@ -350,7 +354,8 @@ namespace Owin.Security.Keycloak.Middleware
         private async Task ForceLogoutRedirectAsync(ClaimsIdentity identity)
         {
             // generate logout uri
-            var uri = await KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri);
+            string idtoken = identity.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.IdToken)?.Value;
+            var uri = await KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri, null, idtoken);
             //foreach (var claim in identity.Claims)
             //{
             //    _logger.Debug($"ForceLogoutRedirectAsync user claim {claim.Type} - {claim.Value}");
