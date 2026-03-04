@@ -143,7 +143,7 @@ namespace Owin.Security.Keycloak.Middleware
             // Signout takes precedence
             if (signout != null)
             {
-                await LogoutRedirectAsync();
+                await LogoutRedirectAsync(signout.Properties);
             }
         }
 
@@ -334,14 +334,14 @@ namespace Owin.Security.Keycloak.Middleware
             Response.Redirect((await KeycloakIdentity.GenerateLoginUriAsync(Options, Request.Uri, state)).ToString());
         }
 
-        private async Task LogoutRedirectAsync()
+        private async Task LogoutRedirectAsync(AuthenticationProperties properties)
         {
 
             string idToken = Context.Authentication.User.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.IdToken)?.Value;
             // Redirect response to logout
             Response.Redirect(
                 (await
-                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri, null, idToken))
+                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri, properties.RedirectUri, idToken))
                     .ToString());
         }
 
