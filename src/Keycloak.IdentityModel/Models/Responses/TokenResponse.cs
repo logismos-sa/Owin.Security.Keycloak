@@ -48,4 +48,22 @@ namespace Keycloak.IdentityModel.Models.Responses
             RefreshToken = authResult.Get(Constants.OpenIdConnectParameterNames.RefreshToken);
         }
     }
+
+    public class ErrorResponse : OidcResponse
+    {
+        public ErrorResponse(string encodedJson)
+            : this(JObject.Parse(encodedJson))
+        {
+        }
+        public ErrorResponse(JObject json)
+        {
+            var authResult = new NameValueCollection();
+
+            // Convert JSON to NameValueCollection type
+            foreach (var item in json)
+                authResult.Add(item.Key, item.Value.ToString());
+
+            base.InitFromRequest(authResult);
+        }
+    }
 }
