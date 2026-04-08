@@ -6,8 +6,10 @@ using System.IdentityModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.Remoting.Contexts;
 using System.Security.Authentication;
 using System.Security.Claims;
+using System.Security.Principal;
 using System.Threading.Tasks;
 using Keycloak.IdentityModel;
 using Keycloak.IdentityModel.Models.EventArgs;
@@ -141,7 +143,7 @@ namespace Owin.Security.Keycloak.Middleware
             // Signout takes precedence
             if (signout != null)
             {
-                await LogoutRedirectAsync();
+                await LogoutRedirectAsync(signout.Properties);
             }
         }
 
@@ -159,6 +161,7 @@ namespace Owin.Security.Keycloak.Middleware
                 }
 
                 var challenge = Helper.LookupChallenge(Options.AuthenticationType, Options.AuthenticationMode);
+                
                 if (challenge == null) return;
 
                 _logger.Debug($"ApplyResponseChallengeAsync for 401.Redirecting");
@@ -171,7 +174,9 @@ namespace Owin.Security.Keycloak.Middleware
         private void SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-            if (signInAuthType == Options.AuthenticationType) return;
+            // adding missing change from commit 17b4dd6e7ea700686581f62a808037b787f0861c 
+            if (!string.IsNullOrWhiteSpace(signInAuthType) && !signInAuthType.Equals(Options.AuthenticationType, StringComparison.OrdinalIgnoreCase)) return;
+
 
             var signInIdentity = signInAuthType != null
                 ? new ClaimsIdentity(identity.Claims, signInAuthType, identity.NameClaimType, identity.RoleClaimType)
@@ -329,12 +334,14 @@ namespace Owin.Security.Keycloak.Middleware
             Response.Redirect((await KeycloakIdentity.GenerateLoginUriAsync(Options, Request.Uri, state)).ToString());
         }
 
-        private async Task LogoutRedirectAsync()
+        private async Task LogoutRedirectAsync(AuthenticationProperties properties)
         {
+
+            string idToken = Context.Authentication.User.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.IdToken)?.Value;
             // Redirect response to logout
             Response.Redirect(
                 (await
-                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri))
+                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri, properties.RedirectUri, idToken))
                     .ToString());
         }
 
@@ -347,7 +354,8 @@ namespace Owin.Security.Keycloak.Middleware
         private async Task ForceLogoutRedirectAsync(ClaimsIdentity identity)
         {
             // generate logout uri
-            var uri = await KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri);
+            string idtoken = identity.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.IdToken)?.Value;
+            var uri = await KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri, null, idtoken);
             //foreach (var claim in identity.Claims)
             //{
             //    _logger.Debug($"ForceLogoutRedirectAsync user claim {claim.Type} - {claim.Value}");

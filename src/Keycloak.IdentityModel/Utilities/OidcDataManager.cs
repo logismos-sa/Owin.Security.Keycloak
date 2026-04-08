@@ -401,11 +401,11 @@ namespace Keycloak.IdentityModel.Utilities
             if (string.IsNullOrEmpty(postLogoutRedirectUrl)) // Double-check options for empty/null
                 postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority);
             else if (Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.Relative))
-                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + "/" + postLogoutRedirectUrl;
+                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + "/" + postLogoutRedirectUrl.TrimStart('/','~');
 
             if (!Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.RelativeOrAbsolute))
                 throw new Exception("Invalid PostLogoutRedirectUrl option: Not a valid relative/absolute URL");
-
+            
             parameters.Add(Protocols.OpenIdConnectParameterNames.PostLogoutRedirectUri, postLogoutRedirectUrl);
 
             return new FormUrlEncodedContent(parameters);

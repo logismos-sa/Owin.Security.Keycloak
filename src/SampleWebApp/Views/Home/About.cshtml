@@ -1,7 +1,20 @@
-﻿@{
+﻿@model System.Security.Claims.ClaimsPrincipal
+@using System.Security.Claims
+@{
     ViewBag.Title = "About";
 }
 <h2>@ViewBag.Title.</h2>
 <h3>@ViewBag.Message</h3>
 
 <p>Use this area to provide additional information.</p>
+@if (HttpContext.Current.GetOwinContext().Authentication.User != null)
+{
+    <ul>
+        @foreach (var claim in HttpContext.Current.GetOwinContext().Authentication.User.Claims)
+        {
+        <li>
+            @claim.Type : @claim.Value
+        </li>
+        }
+    </ul>
+}
