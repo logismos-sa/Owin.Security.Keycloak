@@ -1,15 +1,17 @@
-﻿using System;
+﻿using Keycloak.IdentityModel.Models.Configuration;
+using Keycloak.IdentityModel.Utilities.Synchronization;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Keycloak.IdentityModel.Models.Configuration;
-using Keycloak.IdentityModel.Utilities.Synchronization;
+using System.Web;
 using Protocols = Microsoft.IdentityModel.Protocols;
-using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Keycloak.IdentityModel.Utilities
 {
@@ -334,7 +336,13 @@ namespace Keycloak.IdentityModel.Utilities
             if (!string.IsNullOrWhiteSpace(_options.IdentityProvider))
                 parameters.Add(Constants.KeycloakParameters.IdpHint, _options.IdentityProvider);
 
-            if (!string.IsNullOrWhiteSpace(_options.UiLocales))
+            //respect request's user language if specified, otherwise use options
+            if (!string.IsNullOrWhiteSpace(requestUri.Query))
+            {
+                string uriLang = HttpUtility.ParseQueryString(requestUri.Query)?.Get(Constants.RequestLanguage);
+                if(!string.IsNullOrWhiteSpace(uriLang))
+                    parameters.Add(Protocols.OpenIdConnectParameterNames.UiLocales, uriLang);
+            } else if (!string.IsNullOrWhiteSpace(_options.UiLocales))
                 parameters.Add(Protocols.OpenIdConnectParameterNames.UiLocales, _options.UiLocales);
 
             return new FormUrlEncodedContent(parameters);
