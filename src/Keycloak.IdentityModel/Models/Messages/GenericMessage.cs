@@ -34,17 +34,6 @@ namespace Keycloak.IdentityModel.Models.Messages
                 throw new Exception("HTTP client URI is inaccessible", exception);
             }
 
-            // Check for HTTP errors
-            if (response.StatusCode == HttpStatusCode.BadRequest) {
-                _logger.Error($"HTTP client response returned error {response.ReasonPhrase}/{(int)response.StatusCode}.");
-                throw new AuthenticationException(); // Assume bad credentials
-            }
-
-            //if (!response.IsSuccessStatusCode)
-            //{
-            //    _logger.Error($"HTTP client response error {response.ReasonPhrase}/{response.StatusCode}.");
-            //    throw new Exception("HTTP client returned an unrecoverable error");
-            //}
             return response;
         }
 
@@ -53,7 +42,10 @@ namespace Keycloak.IdentityModel.Models.Messages
             var result = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                _logger.Error($"HTTP client response returned error {result}.");
+                _logger.Error($"HTTP client response returned error {response.ReasonPhrase}/{(int)response.StatusCode}.");
+                // Check for HTTP errors
+                if (response.StatusCode == HttpStatusCode.BadRequest)
+                    throw new AuthenticationException(); // Assume bad credentials
                 throw new Exception("HTTP client returned an unrecoverable error");
             }
             return result;

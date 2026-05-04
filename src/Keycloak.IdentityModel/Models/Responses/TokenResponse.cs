@@ -1,6 +1,6 @@
-﻿using System.Collections.Specialized;
-using Microsoft.IdentityModel.Protocols;
+﻿using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Newtonsoft.Json.Linq;
+using System.Collections.Specialized;
 
 namespace Keycloak.IdentityModel.Models.Responses
 {

@@ -6,10 +6,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Keycloak.IdentityModel.Models.Configuration;
 using Keycloak.IdentityModel.Utilities.Synchronization;
-using Protocols = Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Protocols = Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace Keycloak.IdentityModel.Utilities
 {
