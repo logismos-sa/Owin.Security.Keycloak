@@ -3,8 +3,9 @@
 	public static class Constants
 	{
 		public const string BearerTokenHeader = "Authorization";
+        public const string RequestLanguage = "lang";
 
-		public static class ClaimTypes
+        public static class ClaimTypes
 		{
 			public const string IdToken = "id_token";
 			public const string AccessToken = "access_token";

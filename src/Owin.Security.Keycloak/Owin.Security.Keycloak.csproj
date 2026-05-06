@@ -64,16 +64,13 @@
     <None Include="Owin.Security.Keycloak.nuspec" />
     <None Include="packages.config" />
   </ItemGroup>
-	<ItemGroup>
-		<ProjectReference Include="..\Keycloak.IdentityModel\Keycloak.IdentityModel.csproj">
-			<Project>{fa6dddd7-366a-4012-acf2-252c599f80c0}</Project>
-			<Name>Keycloak.IdentityModel</Name>
-		</ProjectReference>
-	</ItemGroup>
   <ItemGroup>
-    <!--<Reference Include="Keycloak.IdentityModel">
-      <HintPath>..\Keycloak.IdentityModel\bin\Debug\Keycloak.IdentityModel.dll</HintPath>
-    </Reference>-->
+    <ProjectReference Include="..\Keycloak.IdentityModel\Keycloak.IdentityModel.csproj">
+      <Project>{fa6dddd7-366a-4012-acf2-252c599f80c0}</Project>
+      <Name>Keycloak.IdentityModel</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="log4net, Version=3.1.0.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
       <HintPath>..\packages\log4net.3.1.0\lib\net462\log4net.dll</HintPath>
     </Reference>

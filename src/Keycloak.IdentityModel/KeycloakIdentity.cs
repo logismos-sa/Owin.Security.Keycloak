@@ -329,14 +329,15 @@ namespace Keycloak.IdentityModel
         /// <param name="redirectUrl"></param>
         /// <returns></returns>
         public static async Task<Uri> GenerateLogoutUriAsync(IKeycloakParameters parameters, Uri baseUri,
-            string redirectUrl = null)
+            string redirectUrl = null, string idtoken = null)
         {
             if (parameters == null) throw new ArgumentNullException(nameof(parameters));
             if (baseUri == null) throw new ArgumentNullException(nameof(baseUri));
 
             // Generate logout URI and data
             var uriManager = await OidcDataManager.GetCachedContextAsync(parameters);
-            var logoutParams = uriManager.BuildEndSessionEndpointContent(baseUri, null, redirectUrl);
+            //As of KC v.18.0.0 the redirect_uri is obsolete. Use post_logout_redirect_uri with the id_token_hint to procceed to full logout. Otherwise user must confirm the logout
+            var logoutParams = uriManager.BuildEndSessionEndpointContent(baseUri, idtoken, redirectUrl);
             var logoutUrl = uriManager.GetEndSessionEndpoint();
 
             // Return logout URI

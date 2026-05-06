@@ -10,7 +10,7 @@
     <projectUrl>https://github.com/mattmorg55/Owin.Security.Keycloak</projectUrl>
     <iconUrl>https://github.com/mattmorg55/Owin.Security.Keycloak/master/content/keycloak_icon.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Microsoft.Owin 4.2. Authentication Middleware for JBoss Keycloak 11.0</description>
+    <description>Microsoft.Owin 4.2. Authentication Middleware for JBoss Keycloak 26.2</description>
     <releaseNotes>See https://github.com/mattmorg55/Owin.Security.Keycloak/releases</releaseNotes>
     <copyright>Copyright 2026</copyright>
     <tags>keycloak identitymodel identity owin microsoft authentication aspnet5</tags>

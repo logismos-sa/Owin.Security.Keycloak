@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Security.Authentication;
 using System.Threading.Tasks;
 using Keycloak.IdentityModel.Models.Configuration;
+using Keycloak.IdentityModel.Models.Responses;
 
 namespace Keycloak.IdentityModel.Models.Messages
 {
@@ -48,6 +49,7 @@ namespace Keycloak.IdentityModel.Models.Messages
                     throw new AuthenticationException(); // Assume bad credentials
                 throw new Exception("HTTP client returned an unrecoverable error");
             }
+           
             return result;
         }
 

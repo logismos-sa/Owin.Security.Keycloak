@@ -1,15 +1,16 @@
-﻿using System;
+﻿using Keycloak.IdentityModel.Models.Configuration;
+using Keycloak.IdentityModel.Utilities.Synchronization;
+using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Keycloak.IdentityModel.Models.Configuration;
-using Keycloak.IdentityModel.Utilities.Synchronization;
-using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Protocols = Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using System.Web;
 
 namespace Keycloak.IdentityModel.Utilities
 {
@@ -334,7 +335,13 @@ namespace Keycloak.IdentityModel.Utilities
             if (!string.IsNullOrWhiteSpace(_options.IdentityProvider))
                 parameters.Add(Constants.KeycloakParameters.IdpHint, _options.IdentityProvider);
 
-            if (!string.IsNullOrWhiteSpace(_options.UiLocales))
+            //respect request's user language if specified, otherwise use options
+            if (!string.IsNullOrWhiteSpace(requestUri.Query))
+            {
+                string uriLang = HttpUtility.ParseQueryString(requestUri.Query)?.Get(Constants.RequestLanguage);
+                if(!string.IsNullOrWhiteSpace(uriLang))
+                    parameters.Add(Protocols.OpenIdConnectParameterNames.UiLocales, uriLang);
+            } else if (!string.IsNullOrWhiteSpace(_options.UiLocales))
                 parameters.Add(Protocols.OpenIdConnectParameterNames.UiLocales, _options.UiLocales);
 
             return new FormUrlEncodedContent(parameters);
@@ -401,11 +408,11 @@ namespace Keycloak.IdentityModel.Utilities
             if (string.IsNullOrEmpty(postLogoutRedirectUrl)) // Double-check options for empty/null
                 postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority);
             else if (Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.Relative))
-                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + "/" + postLogoutRedirectUrl;
+                postLogoutRedirectUrl = requestUri.GetLeftPart(UriPartial.Authority) + "/" + postLogoutRedirectUrl.TrimStart('/','~');
 
             if (!Uri.IsWellFormedUriString(postLogoutRedirectUrl, UriKind.RelativeOrAbsolute))
                 throw new Exception("Invalid PostLogoutRedirectUrl option: Not a valid relative/absolute URL");
-
+            
             parameters.Add(Protocols.OpenIdConnectParameterNames.PostLogoutRedirectUri, postLogoutRedirectUrl);
 
             return new FormUrlEncodedContent(parameters);
