@@ -171,7 +171,7 @@ namespace Owin.Security.Keycloak.Middleware
         private void SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-            if (!string.IsNullOrWhiteSpace(signInAuthType) && !signInAuthType.Equals(Options.AuthenticationType, StringComparison.OrdinalIgnoreCase)) return;
+            if (signInAuthType == Options.AuthenticationType) return;
 
             var signInIdentity = signInAuthType != null
                 ? new ClaimsIdentity(identity.Claims, signInAuthType, identity.NameClaimType, identity.RoleClaimType)
