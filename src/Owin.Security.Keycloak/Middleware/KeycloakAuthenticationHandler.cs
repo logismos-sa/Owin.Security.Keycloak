@@ -174,8 +174,7 @@ namespace Owin.Security.Keycloak.Middleware
         private void SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-            // adding missing change from commit 17b4dd6e7ea700686581f62a808037b787f0861c 
-            if (!string.IsNullOrWhiteSpace(signInAuthType) && !signInAuthType.Equals(Options.AuthenticationType, StringComparison.OrdinalIgnoreCase)) return;
+            if (signInAuthType == Options.AuthenticationType) return;
 
 
             var signInIdentity = signInAuthType != null
