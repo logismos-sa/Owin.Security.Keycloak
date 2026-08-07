@@ -1,4 +1,12 @@
-﻿using System;
+﻿using Keycloak.IdentityModel;
+using Keycloak.IdentityModel.Models.EventArgs;
+using Keycloak.IdentityModel.Models.Responses;
+using Keycloak.IdentityModel.Utilities;
+using Microsoft.Owin;
+using Microsoft.Owin.Security;
+using Microsoft.Owin.Security.DataHandler;
+using Microsoft.Owin.Security.Infrastructure;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -8,15 +16,9 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Authentication;
 using System.Security.Claims;
+using System.Security.Principal;
+using System.Text;
 using System.Threading.Tasks;
-using Keycloak.IdentityModel;
-using Keycloak.IdentityModel.Models.EventArgs;
-using Keycloak.IdentityModel.Models.Responses;
-using Keycloak.IdentityModel.Utilities;
-using Microsoft.Owin;
-using Microsoft.Owin.Security;
-using Microsoft.Owin.Security.DataHandler;
-using Microsoft.Owin.Security.Infrastructure;
 
 namespace Owin.Security.Keycloak.Middleware
 {
@@ -71,9 +73,9 @@ namespace Owin.Security.Keycloak.Middleware
 
             if (!Options.ForceBearerTokenAuth && Request.Uri.GetLeftPart(UriPartial.Path) == callbackUri.ToString())
             {
+                _logger.Debug($"Request from {Request.Uri}");
                 // Create authorization result from query
                 var authResult = new AuthorizationResponse(Request.Uri.Query);
-                _logger.Debug($"Request from {Request.Uri}");
 
                 // If the authorization response returned a "error" query parameter (instead of "code" + "state"), redirect to a configured URL.
                 // This could occur if the login is aborted by the user.
@@ -97,7 +99,7 @@ namespace Owin.Security.Keycloak.Middleware
                     if (!stateData.ContainsKey(Constants.CacheTypes.AuthenticationProperties))
                     {
                         await ForceLogoutRedirectAsync(identity);
-                        _logger.Debug($"State data is null.Logging out user and redirecting");
+                        _logger.Debug($"State data is null.Forced logout, redirecting");
                         return true;
                     }
 
@@ -106,7 +108,14 @@ namespace Owin.Security.Keycloak.Middleware
                     
                     //everything is ok until here, sign in the user
                     Context.Authentication.User = new ClaimsPrincipal(identity);
-                    SignInAsAuthentication(identity, properties, Options.SignInAsAuthenticationType);
+                    var signInResult = SignInAsAuthentication(identity, properties, Options.SignInAsAuthenticationType);
+                    if (!signInResult)
+                    {
+                        await ForceLogoutRedirectAsync(identity);
+                        _logger.Debug($"Couldn't create identity for {identity.Name}. Forced logout, redirecting");
+                        return true;
+                    }
+
                     _logger.Debug($"Signed in user {identity.Name} with state data.");
 
                     // Trigger OnAuthenticated?
@@ -168,16 +177,30 @@ namespace Owin.Security.Keycloak.Middleware
 
         #region Private Helper Functions
 
-        private void SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
+        private bool SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-            if (signInAuthType == Options.AuthenticationType) return;
+          
+            if (signInAuthType == Options.AuthenticationType)
+            {
+                _logger.Warn($"SignInAuthType matches configured IIdentity AuthenticationType {signInAuthType}");
+                return false;
+            }
+
+            ////below commit 17b4dd6 (mattmorg)
+            //if (!string.IsNullOrWhiteSpace(signInAuthType) && !signInAuthType.Equals(Options.AuthenticationType, StringComparison.OrdinalIgnoreCase)) return;
+            //// suggests that the signInAuthenticationType (cookie name) must be equal to the AuthenticationType's name (middleware of the pipeline).
+            //// This is wrong. The cookie name must be different to the AuthenticationType name for configuring another pipeline
+            //// (for example, when using multiple authentication methods). 
+            //// The correct check is to see if the signInAuthType is null or empty, and if so, use the default identity's (cookie) AuthenticationType.
+            //// If it is not null or empty, then use that value.
 
             var signInIdentity = signInAuthType != null
                 ? new ClaimsIdentity(identity.Claims, signInAuthType, identity.NameClaimType, identity.RoleClaimType)
                 : identity;
 
-            if (string.IsNullOrWhiteSpace(signInIdentity.AuthenticationType)) return;
+            if (string.IsNullOrWhiteSpace(signInIdentity.AuthenticationType)) return false;
+            if (!signInIdentity.AuthenticationType.Equals(Options.SignInAsAuthenticationType, StringComparison.OrdinalIgnoreCase)) return false;
 
             if (authProperties == null)
             {
@@ -208,6 +231,7 @@ namespace Owin.Security.Keycloak.Middleware
             }
 
             Context.Authentication.SignIn(authProperties, signInIdentity);
+            return true;
         }
 
         private async Task ValidateSignInAsIdentities()
@@ -297,6 +321,9 @@ namespace Owin.Security.Keycloak.Middleware
                 // Build auth error redirect address with error query parameters from Keycloak.
                 var authErrorUri = new Uri(authResponseErrorRedirectUrl + (!string.IsNullOrEmpty(authErrorQueryString) ? "?" + authErrorQueryString : ""));
 
+                string logDetails = string.Join("&", parameters.Select(p => $"{p.Key}={p.Value}").ToList());
+                _logger.Error($"Authentication error. Will redirect to error page {logDetails}");
+
                 Response.Redirect(authErrorUri.ToString());
             }
             else
@@ -348,12 +375,6 @@ namespace Owin.Security.Keycloak.Middleware
         {
             // generate logout uri
             var uri = await KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri);
-            //foreach (var claim in identity.Claims)
-            //{
-            //    _logger.Debug($"ForceLogoutRedirectAsync user claim {claim.Type} - {claim.Value}");
-            //}
-          
-            _logger.Debug($"Force logout identity with isAuthenticated:{identity.IsAuthenticated}");
 
             Claim firstOrDefault = identity.Claims.FirstOrDefault(claim => claim.Type == "refresh_token");
             if (firstOrDefault != null)
@@ -366,11 +387,12 @@ namespace Owin.Security.Keycloak.Middleware
 
             if (challenge == null)
             {
-                _logger.Debug($"Force logged out {identity.Name}.Challenge is null.Return.");
+                _logger.Debug($"Forced logout {identity.Name}.Challenge is null.Return.");
                 return;
             }
 
-            _logger.Debug($"Force logged out {identity.Name}.Redirecting from challenge properties.");
+            _logger.Debug($"Forced logout {identity.Name}.Redirecting from challenge with base uri.");
+            challenge.Properties.RedirectUri = Request.Uri.GetLeftPart(UriPartial.Authority) + Options.VirtualDirectory;
             await LoginRedirectAsync(challenge.Properties);
         }
 
