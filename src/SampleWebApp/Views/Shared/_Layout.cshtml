@@ -30,6 +30,17 @@
     <div class="container body-content">
         @RenderBody()
         <hr />
+        @if (HttpContext.Current.GetOwinContext().Authentication.User != null)
+        {
+            <ul>
+                @foreach (var claim in HttpContext.Current.GetOwinContext().Authentication.User.Claims)
+                {
+                    <li>
+                        @claim.Type : @claim.Value
+                    </li>
+                }
+            </ul>
+        }
         <footer>
             <p>&copy; @DateTime.Now.Year - My ASP.NET Application</p>
         </footer>
