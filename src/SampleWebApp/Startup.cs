@@ -25,10 +25,10 @@ namespace SampleWebApp
 
 			app.UseKeycloakAuthentication(new KeycloakAuthenticationOptions
 			{
-				Realm = "Athena",
-				ClientId = "athena-portal",
-				ClientSecret = "qAAtPWNLR1mVMJTizFf0ZQ6wsdcnGPoI",
-				KeycloakUrl = "http://localhost:8080/",
+				Realm = "a realm",
+				ClientId = "a client",
+				ClientSecret = "a secret",
+				KeycloakUrl = "https://your-url",
 				ResponseType = "code",
 				AuthenticationType = persistentAuthType,
 				//AuthenticationMode = AuthenticationMode.Active,
@@ -49,24 +49,7 @@ namespace SampleWebApp
 
                 TokenClockSkew = TimeSpan.FromSeconds(2)
 			});
-            //app.UseKeycloakAuthentication(new KeycloakAuthenticationOptions
-            //{
-            //    // App-Specific Settings
-             
-            //    AllowUnsignedTokens = false,
-            //    DisableIssuerValidation = false,
-            //    DisableAudienceValidation = false,
-            //    //PostLogoutRedirectUrl = "http://localhost:5252/",//ConfigurationManager.AppSettings["authCookie"],
-            //    TokenClockSkew = TimeSpan.FromSeconds(2), // System.TimeZoneInfo.Local.GetUtcOffset(System.DateTime.UtcNow), //The time subtracted from the final access token expiration time//The maximum grace time span for expired tokens to be accepted
-            //    //OnAuthenticated = delegate (IOwinContext con, OnAuthenticatedEventArgs args)
-            //    //{
-            //    //    AssignAuthorizationRedirectUri(con, args);
-            //    //},
-            //    RefreshBeforeTokenExpiration = TimeSpan.FromSeconds(30),
-            //    // validation of refresh token is done on the server side anyways
-            //    // Fix for Keycloak server v4.6-4.8,  overrides DisableRefreshTokenSignatureValidation. The content of Refresh token was changed. Refresh token should not be used by the client application other than sending it to the Keycloak server to get a new Access token (where Keycloak server will validate it) - therefore validation in client application can be skipped
-            //    DisableAllRefreshTokenValidation = true
-            //});
+
 
         }
     }

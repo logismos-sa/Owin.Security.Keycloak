@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyDescription("Microsoft.Owin 3.1 Authentication Middleware for JBoss Keycloak 11")]
+[assembly: AssemblyDescription("Microsoft.Owin 4.2.2 Authentication Middleware for JBoss Keycloak 11.0")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("")]
@@ -11,4 +11,4 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
 [assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("3.0.6.0")]
+[assembly: AssemblyFileVersion("3.1.0.0")]

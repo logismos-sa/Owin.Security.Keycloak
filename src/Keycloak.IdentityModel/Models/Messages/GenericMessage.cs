@@ -35,7 +35,6 @@ namespace Keycloak.IdentityModel.Models.Messages
                 throw new Exception("HTTP client URI is inaccessible", exception);
             }
 
-            
             return response;
         }
 
@@ -44,16 +43,10 @@ namespace Keycloak.IdentityModel.Models.Messages
             var result = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                _logger.Error($"HTTP client response returned error {result} : {response.ReasonPhrase}/{(int)response.StatusCode} .");
-                ErrorResponse errorResponse = new ErrorResponse(result);
-
+                _logger.Error($"HTTP client response returned error {response.ReasonPhrase}/{(int)response.StatusCode}.");
                 // Check for HTTP errors
-                if (response.StatusCode == HttpStatusCode.Unauthorized 
-                    || (response.StatusCode == HttpStatusCode.BadRequest & errorResponse.Error.Equals("invalid_grant")))
-                {
-                    throw new AuthenticationException();
-                }
-
+                if (response.StatusCode == HttpStatusCode.BadRequest)
+                    throw new AuthenticationException(); // Assume bad credentials
                 throw new Exception("HTTP client returned an unrecoverable error");
             }
            
