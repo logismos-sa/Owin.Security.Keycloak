@@ -44,7 +44,7 @@ namespace Owin.Security.Keycloak.Middleware
             // Load web root path from config
             if (string.IsNullOrWhiteSpace(Options.VirtualDirectory))
                 Options.VirtualDirectory = "/";
-            Options.VirtualDirectory = NormalizeUrl(Options.VirtualDirectory);
+            Options.VirtualDirectory = NormalizeUrlPath(Options.VirtualDirectory);
             if (!Uri.IsWellFormedUriString(Options.VirtualDirectory, UriKind.Relative))
                 ThrowInvalidOption(nameof(Options.VirtualDirectory));
 
@@ -69,6 +69,13 @@ namespace Owin.Security.Keycloak.Middleware
                 {
                     Options.SignInAsAuthenticationType = "";
                 }
+            }
+            //prevents infinite loops, security loopholes, misconfigured middleware, and disability to use multiple KeycloakAuthenticationOptions with the same AuthenticationType
+            if (StringComparer.OrdinalIgnoreCase.Equals(Options.SignInAsAuthenticationType, Options.AuthenticationType))
+            {
+                logger.Error($"KeycloakAuthenticationOptions: SignInAsAuthenticationType '{authType}' matches Authentication type; should be unique");
+                throw new Exception(
+                    $"KeycloakAuthenticationOptions: SignInAsAuthenticationType type '{authType}' matches Authentication type; should be unique");
             }
 
             // Switch composite options
