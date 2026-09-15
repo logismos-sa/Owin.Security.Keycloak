@@ -14,6 +14,7 @@ using System.IdentityModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.Remoting.Contexts;
 using System.Security.Authentication;
 using System.Security.Claims;
 using System.Security.Principal;
@@ -150,7 +151,7 @@ namespace Owin.Security.Keycloak.Middleware
             // Signout takes precedence
             if (signout != null)
             {
-                await LogoutRedirectAsync();
+                await LogoutRedirectAsync(signout.Properties);
             }
         }
 
@@ -168,6 +169,7 @@ namespace Owin.Security.Keycloak.Middleware
                 }
 
                 var challenge = Helper.LookupChallenge(Options.AuthenticationType, Options.AuthenticationMode);
+                
                 if (challenge == null) return;
 
                 _logger.Debug($"ApplyResponseChallengeAsync for 401.Redirecting");
@@ -194,6 +196,7 @@ namespace Owin.Security.Keycloak.Middleware
             //// (for example, when using multiple authentication methods). 
             //// The correct check is to see if the signInAuthType is null or empty, and if so, use the default identity's (cookie) AuthenticationType.
             //// If it is not null or empty, then use that value.
+
 
             var signInIdentity = signInAuthType != null
                 ? new ClaimsIdentity(identity.Claims, signInAuthType, identity.NameClaimType, identity.RoleClaimType)
@@ -356,12 +359,14 @@ namespace Owin.Security.Keycloak.Middleware
             Response.Redirect((await KeycloakIdentity.GenerateLoginUriAsync(Options, Request.Uri, state)).ToString());
         }
 
-        private async Task LogoutRedirectAsync()
+        private async Task LogoutRedirectAsync(AuthenticationProperties properties)
         {
+
+            string idToken = Context.Authentication.User.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.IdToken)?.Value;
             // Redirect response to logout
             Response.Redirect(
                 (await
-                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri))
+                    KeycloakIdentity.GenerateLogoutUriAsync(Options, Request.Uri, properties.RedirectUri, idToken))
                     .ToString());
         }
 

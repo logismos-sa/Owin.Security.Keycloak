@@ -38,7 +38,7 @@ namespace SampleWebApp
                 //Token validation options - these are all set to defaults
                 AllowUnsignedTokens = false,
 				DisableTokenSignatureValidation = false,
-				DisableIssuerValidation = false,
+                DisableIssuerValidation = false,
 				DisableAudienceValidation = false,
                 DisableRefreshTokenSignatureValidation = true,
                 // Fix for Keycloak server v4.5
