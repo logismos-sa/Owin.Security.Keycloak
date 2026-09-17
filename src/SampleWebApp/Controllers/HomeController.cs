@@ -1,8 +1,4 @@
-﻿using Microsoft.Owin.Security;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
+﻿using System;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
@@ -46,11 +42,17 @@ namespace SampleWebApp.Controllers
         }
 
         [Authorize]
-        public ActionResult Logout()
+        public async Task<ActionResult> Logout()
         {
 
             bool isAuthenticated = HttpContext.GetOwinContext().Authentication.User.Identity.IsAuthenticated;
-            HttpContext.GetOwinContext().Authentication.SignOut();
+            var authenticationResult = await HttpContext.GetOwinContext().Authentication.AuthenticateAsync("keycloak_cookies");
+            authenticationResult.Properties.AllowRefresh = false;
+            authenticationResult.Properties.ExpiresUtc = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(3));
+            authenticationResult.Properties.RedirectUri = Url.Content("~/Home/Index");
+
+            HttpContext.GetOwinContext().Authentication.SignOut(authenticationResult.Properties, "AuthMiddleware", authenticationResult.Identity.AuthenticationType);
+           
             return RedirectToAction("Index");
         }
 

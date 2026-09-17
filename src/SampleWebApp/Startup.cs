@@ -11,29 +11,32 @@ namespace SampleWebApp
 {
 	public class Startup
 	{
-		const string persistentAuthType = "keycloak_cookies"; // Or name it whatever you want
+		const string persistentCookieAuthType = "keycloak_cookies"; // Or name it whatever you want
         const string persistentMiddlewareAuthType = "AuthMiddleware"; // Or name it whatever you want
         public void Configuration(IAppBuilder app)
 		{
-			app.UseCookieAuthentication(new CookieAuthenticationOptions
+            // You may also use this method if you have multiple authentication methods below,
+            // or if you just like it better:
+            //app.SetDefaultSignInAsAuthenticationType(persistentCookieAuthType);
+            
+            app.UseCookieAuthentication(new CookieAuthenticationOptions
 			{
-				AuthenticationType = persistentAuthType
-			});
-
-			// You may also use this method if you have multiple authentication methods below,
-			// or if you just like it better:
-			app.SetDefaultSignInAsAuthenticationType(persistentAuthType);
-
+				AuthenticationType = persistentCookieAuthType,
+                CookieName = "keycloakAdapterCookie"
+            });
+            
             app.UseKeycloakAuthentication(new KeycloakAuthenticationOptions
 			{
-                Realm = "realm",
-                ClientId = "client",
-                ClientSecret = "secret",
-                KeycloakUrl = "https://your-url",
+                Realm = "CityCollege",
+                ClientId = "athena-portal",
+                ClientSecret = "86d321d0-7008-464a-8e50-dfbb66c6dd92",
+                KeycloakUrl = "https://sso-backoffice.logismos.gr",
                 ResponseType = "code",
-				AuthenticationType = persistentMiddlewareAuthType,
-				//AuthenticationMode = AuthenticationMode.Active,
-				SignInAsAuthenticationType = persistentAuthType, // Not required with SetDefaultSignInAsAuthenticationType
+                // Unique identifier for this OIDC middleware instance
+                AuthenticationType = persistentMiddlewareAuthType,
+                //AuthenticationMode = AuthenticationMode.Active, //default
+                //Instructs Keycloak to hand the generated principal over to this cookie mechanism
+                SignInAsAuthenticationType = persistentCookieAuthType, // Not required with SetDefaultSignInAsAuthenticationType
 
                 //Token validation options - these are all set to defaults
                 AllowUnsignedTokens = false,
@@ -44,9 +47,9 @@ namespace SampleWebApp
                 // Fix for Keycloak server v4.5
                 DisableAllRefreshTokenValidation = true, // Fix for Keycloak server v4.6-4.8,  overrides DisableRefreshTokenSignatureValidation. The content of Refresh token was changed. Refresh token should not be used by the client application other than sending it to the Keycloak server to get a new Access token (where Keycloak server will validate it) - therefore validation in client application can be skipped.
                 
-                //CallbackPath = "/Home/Callback",
-                // PostLogoutRedirectUrl = "http://localhost:5232/Home/LoggedOut",
-                //AuthResponseErrorRedirectUrl = "/Home/Error", //Redirect (instead of exception) when Keycloak returns error during authentication. Will include "error" query parameter.
+                //,CallbackPath = "/Home/Callback"
+                //,PostLogoutRedirectUrl = "http://localhost:5232/Home/LoggedOut"
+                //,AuthResponseErrorRedirectUrl = "/Home/Error" //Redirect (instead of exception) when Keycloak returns error during authentication. Will include "error" query parameter.
                 TokenClockSkew = TimeSpan.FromSeconds(2)
 			});
 
