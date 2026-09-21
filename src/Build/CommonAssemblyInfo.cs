@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyDescription("Microsoft.Owin 4.2.2 Authentication Middleware for JBoss Keycloak 11.0")]
+[assembly: AssemblyDescription("Microsoft.Owin 4.2.2 Authentication Middleware for Quarkus Keycloak 26.3.5.0")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("")]
