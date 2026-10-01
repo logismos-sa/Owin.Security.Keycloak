@@ -1,6 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Keycloak.IdentityModel.Extensions;
+using Keycloak.IdentityModel.Models.Configuration;
+using Keycloak.IdentityModel.Models.Messages;
+using Keycloak.IdentityModel.Models.Responses;
+using Keycloak.IdentityModel.Utilities;
+using Keycloak.IdentityModel.Utilities.ClaimMapping;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security;
@@ -8,14 +16,6 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using Keycloak.IdentityModel.Extensions;
-using Keycloak.IdentityModel.Models.Configuration;
-using Keycloak.IdentityModel.Models.Messages;
-using Keycloak.IdentityModel.Models.Responses;
-using Keycloak.IdentityModel.Utilities;
-using Keycloak.IdentityModel.Utilities.ClaimMapping;
-using Newtonsoft.Json.Linq;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace Keycloak.IdentityModel
 {
@@ -245,38 +245,40 @@ namespace Keycloak.IdentityModel
             if (accessToken == null) throw new ArgumentNullException(nameof(accessToken));
 
             var kcIdentity = new KeycloakIdentity(parameters);
+            DateTime? accessValidTo, refreshValidTo = null;
             try
             {
-                await kcIdentity.CopyFromJwt(accessToken, refreshToken, idToken);
+                try
+                {
+                    await kcIdentity.CopyFromJwt(accessToken, refreshToken, idToken);
+                }
+                catch (SecurityTokenExpiredException ex)
+                {
+                    _logger.Debug($"SecurityTokenExpiredException was thrown.Refreshing identity with refresh token. {ex.Message}");
+                    // Load new identity from token endpoint via refresh token (if possible). Otherwise signout on bubble up
+                    await kcIdentity.RefreshIdentity(refreshToken);
+                }
 
                 //check if identity is about to expire in 30 secs (default). If yes refresh identity! 
-                DateTime? accessValidTo =
-                    DateTimeExtension.ParseClaimsDateToFormat(
-                        kcIdentity.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.AccessTokenExpiration)?
-                            .Value);
-                DateTime? refreshValidTo =
+                accessValidTo =
+                            DateTimeExtension.ParseClaimsDateToFormat(
+                                kcIdentity.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.AccessTokenExpiration)?
+                                    .Value)?.ToUniversalTime();
+                refreshValidTo =
                     DateTimeExtension.ParseClaimsDateToFormat(
                         kcIdentity.Claims?.FirstOrDefault(c => c.Type == Constants.ClaimTypes.RefreshTokenExpiration)?
-                            .Value);
-                var utcNow = DateTime.UtcNow;
-                //_logger.Debug($"access {accessValidToX?.ToUniversalTime()} " +
-                //              $"utcnow {utcNow} refresh {refreshValidToX?.ToUniversalTime()}.");
+                            .Value)?.ToUniversalTime();
 
-                if (utcNow >= accessValidTo?.Subtract(parameters.RefreshBeforeTokenExpiration).ToUniversalTime() &&
-                    utcNow <= refreshValidTo?.Subtract(parameters.RefreshBeforeTokenExpiration).ToUniversalTime())
+                var utcNow = DateTime.UtcNow;
+
+                if (accessValidTo != null && utcNow >= accessValidTo?.Subtract(parameters.RefreshBeforeTokenExpiration) &&
+                     refreshValidTo != null && utcNow <= refreshValidTo?.Subtract(parameters.RefreshBeforeTokenExpiration))
                 {
-                    _logger.Debug(
-                        $"{kcIdentity.Name} access token will expire in less then {parameters.RefreshBeforeTokenExpiration} seconds. Refresh identity.");
+                    _logger.Debug($"{kcIdentity.Name} access token will expire in less then {parameters.RefreshBeforeTokenExpiration} seconds. Refresh identity.");
                     await kcIdentity.RefreshIdentity(refreshToken);
                 }
             }
-            catch (SecurityTokenExpiredException)
-            {
-                _logger.Debug($"SecurityTokenExpiredException was thrown.Refreshing identity with refresh token");
-                // Load new identity from token endpoint via refresh token (if possible)
-                await kcIdentity.RefreshIdentity(refreshToken);
-            }
-            catch (ArgumentOutOfRangeException)  
+            catch (ArgumentOutOfRangeException)
             {
                 _logger.Debug($"ArgumentOutOfRangeException was thrown when calculating acces token expiration timeframe. No refreshing of identity. User is out of luck.");
             }
@@ -475,9 +477,9 @@ namespace Keycloak.IdentityModel
                 // if (_kcClaims == null || (_accessToken.ValidTo.Subtract(TimeSpan.FromSeconds(5)) <= DateTime.UtcNow && _refreshToken != null && DateTime.UtcNow <= _refreshToken.ValidTo.Subtract(TimeSpan.FromSeconds(60))))
                 if ((_kcClaims == null || _accessToken.ValidTo <= DateTime.UtcNow) && _refreshToken != null)
                 {
-                    // Validate refresh token expiration
+                    // Validate refresh token expiration. Could skip this if and let RefreshIdentity>ValidateToken do the job.
                     if (_refreshToken.ValidTo <= DateTime.UtcNow)
-                        throw new Exception("Both the access token and the refresh token have expired");
+                        throw new SecurityTokenExpiredException("Both access and refresh token have expired");
 
                     _logger.Debug($"about to refresh identity {Name} because access token has expired.");
                     // Load new identity from token endpoint via refresh token
@@ -492,6 +494,17 @@ namespace Keycloak.IdentityModel
             }
         }
 
+        /// <summary>
+        /// Responsible for validating tokens and throws/bubbles up all related exceptions.
+        /// Catch accordinlgy in InvokeAsync or when logic of token is wrapped.
+        /// </summary>
+        /// <param name="accessToken"></param>
+        /// <param name="refreshToken"></param>
+        /// <param name="idToken"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="Exception"></exception>
         protected async Task CopyFromJwt(string accessToken, string refreshToken = null, string idToken = null)
         {
             if (accessToken == null) throw new ArgumentException(nameof(accessToken));
@@ -500,25 +513,25 @@ namespace Keycloak.IdentityModel
             var tokenHandler = new KeycloakTokenHandler();
             var uriManager = await OidcDataManager.GetCachedContextAsync(_parameters);
 
-            SecurityToken accessSecurityToken, idSecurityToken = null, refreshSecurityToken = null;
+            JwtSecurityToken accessSecurityToken, idSecurityToken = null, refreshSecurityToken = null;
 
             if (_parameters.UseRemoteTokenValidation)
             {
-                accessSecurityToken = await KeycloakTokenHandler.ValidateTokenRemote(accessToken, uriManager);
+                accessSecurityToken = (JwtSecurityToken)await KeycloakTokenHandler.ValidateTokenRemote(accessToken, uriManager);
             }
             else
             {
-                accessSecurityToken = tokenHandler.ValidateToken(accessToken, _parameters, uriManager);
+                accessSecurityToken = (JwtSecurityToken)tokenHandler.ValidateToken(accessToken, _parameters, uriManager);
             }
 
             // Double-check
             if (accessSecurityToken == null)
-                throw new Exception("Internal error: Invalid access token; valid required");
+                throw new SecurityTokenException("Internal error: Invalid access token; valid required");
 
             if (idToken != null)
-                idSecurityToken = tokenHandler.ValidateToken(idToken, _parameters, uriManager);
+                idSecurityToken = (JwtSecurityToken)tokenHandler.ValidateToken(idToken, _parameters, uriManager);
             if (refreshToken != null)
-                refreshSecurityToken = tokenHandler.ValidateToken(refreshToken, _parameters, uriManager, isRefreshToken: true);
+                refreshSecurityToken = (JwtSecurityToken)tokenHandler.ValidateToken(refreshToken, _parameters, uriManager, isRefreshToken: true);
 
             // Save to this object
             // TODO: Convert to MS claims parsing in token handler
