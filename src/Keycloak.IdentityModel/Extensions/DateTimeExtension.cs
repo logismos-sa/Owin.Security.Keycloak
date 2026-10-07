@@ -37,8 +37,6 @@ namespace Keycloak.IdentityModel.Extensions
         {
             try
             {
-                if (dt == null) return null;
-
                 string date = DateTime.ParseExact(dt, generalClaimsFormat,
                     CultureInfo.InvariantCulture).ToString(generalFormat);
                 return DateTime.Parse(date);

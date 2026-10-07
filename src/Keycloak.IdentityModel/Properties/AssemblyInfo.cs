@@ -25,4 +25,4 @@ using System.Runtime.InteropServices;
 //      Revision
 //
 
-[assembly: AssemblyInformationalVersion("2.0.1.*")]
+[assembly: AssemblyInformationalVersion("2.0.0.0")]

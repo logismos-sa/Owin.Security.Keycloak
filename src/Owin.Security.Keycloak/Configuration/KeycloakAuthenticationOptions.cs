@@ -200,11 +200,6 @@ namespace Owin.Security.Keycloak
         public Action<IOwinContext, OnAuthenticatedEventArgs> OnAuthenticated { get; set; }
 
         /// <summary>
-        ///  OPTIONAL: Triggers <see cref="Action"/> to fire after security token exceptions authentication.
-        /// </summary>
-        public Action<IOwinContext, OnSecurityExceptionArgs> OnSecurityException { get; set; }
-
-        /// <summary>
         /// OPTIONAL.ADV: Triggers the Identity to be refreshed before the access token expires.
         /// </summary>
         /// <remarks>
