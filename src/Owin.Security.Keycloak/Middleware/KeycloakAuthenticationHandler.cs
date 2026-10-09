@@ -5,21 +5,16 @@ using Keycloak.IdentityModel.Utilities;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
-using Microsoft.Owin.Security.DataHandler;
 using Microsoft.Owin.Security.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IdentityModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Runtime.Remoting.Contexts;
 using System.Security.Authentication;
 using System.Security.Claims;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Owin.Security.Keycloak.Middleware
@@ -36,7 +31,7 @@ namespace Owin.Security.Keycloak.Middleware
                 // Try to authenticate via bearer token auth
                 if (Request.Headers.ContainsKey(Constants.BearerTokenHeader))
                 {
-                    var bearerAuthArr = Request.Headers[Constants.BearerTokenHeader].Trim().Split(new[] { ' ' }, 2);
+                    var bearerAuthArr = Request.Headers[Constants.BearerTokenHeader].Trim().Split(new[] {' '}, 2);
                     if ((bearerAuthArr.Length == 2) && bearerAuthArr[0].ToLowerInvariant() == "bearer")
                     {
                         try
@@ -278,7 +273,7 @@ namespace Owin.Security.Keycloak.Middleware
         {
             // Generate error response
             var task = response.WriteAsync(errorMessage);
-            response.StatusCode = (int)statusCode;
+            response.StatusCode = (int) statusCode;
             response.ReasonPhrase = reasonPhrase;
             response.ContentType = "text/plain";
             await task;
