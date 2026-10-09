@@ -43,7 +43,7 @@ namespace Keycloak.IdentityModel.Models.Messages
             var result = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
-                _logger.Error($"HTTP client response returned error {response.ReasonPhrase}/{(int)response.StatusCode}.");
+                _logger.Error($"HTTP client response returned error {response.ReasonPhrase}/{(int)response.StatusCode}, {result}.");
                 // Check for HTTP errors
                 if (response.StatusCode == HttpStatusCode.BadRequest)
                     throw new AuthenticationException(); // Assume bad credentials

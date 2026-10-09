@@ -477,7 +477,7 @@ namespace Keycloak.IdentityModel
                 {
                     // Validate refresh token expiration
                     if (_refreshToken.ValidTo <= DateTime.UtcNow)
-                        throw new Exception("Both the access token and the refresh token have expired");
+                        throw new SecurityTokenExpiredException("Both the access token and the refresh token have expired");
 
                     _logger.Debug($"about to refresh identity {Name} because access token has expired.");
                     // Load new identity from token endpoint via refresh token
@@ -513,7 +513,7 @@ namespace Keycloak.IdentityModel
 
             // Double-check
             if (accessSecurityToken == null)
-                throw new Exception("Internal error: Invalid access token; valid required");
+                throw new SecurityTokenException("Internal error: Invalid access token; valid required");
 
             if (idToken != null)
                 idSecurityToken = tokenHandler.ValidateToken(idToken, _parameters, uriManager);
