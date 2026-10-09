@@ -2,6 +2,7 @@
 using System.Collections.Specialized;
 using System.Web;
 using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace Keycloak.IdentityModel.Models.Responses
 {

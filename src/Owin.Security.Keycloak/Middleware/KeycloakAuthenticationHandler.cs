@@ -2,23 +2,19 @@
 using Keycloak.IdentityModel.Models.EventArgs;
 using Keycloak.IdentityModel.Models.Responses;
 using Keycloak.IdentityModel.Utilities;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
-using Microsoft.Owin.Security.DataHandler;
 using Microsoft.Owin.Security.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IdentityModel;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Runtime.Remoting.Contexts;
 using System.Security.Authentication;
 using System.Security.Claims;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Owin.Security.Keycloak.Middleware
@@ -74,7 +70,6 @@ namespace Owin.Security.Keycloak.Middleware
 
             if (!Options.ForceBearerTokenAuth && Request.Uri.GetLeftPart(UriPartial.Path) == callbackUri.ToString())
             {
-                _logger.Debug($"Request from {Request.Uri}");
                 // Create authorization result from query
                 var authResult = new AuthorizationResponse(Request.Uri.Query);
 
@@ -87,7 +82,7 @@ namespace Owin.Security.Keycloak.Middleware
                 }
                 try
                 {
-                    // Validate passed state
+                    //Validate passed state
                     var stateData = Global.StateCache.ReturnState(authResult.State) ?? new Dictionary<string, object>();
                     //throw new BadRequestException("Invalid state: Please reattempt the request");
 
@@ -96,7 +91,7 @@ namespace Owin.Security.Keycloak.Middleware
                     var kcIdentity =
                         await KeycloakIdentity.ConvertFromAuthResponseAsync(Options, authResult, Request.Uri);
                     var identity = await kcIdentity.ToClaimsIdentityAsync();
-                    
+
                     if (!stateData.ContainsKey(Constants.CacheTypes.AuthenticationProperties))
                     {
                         await ForceLogoutRedirectAsync(identity);
@@ -106,7 +101,7 @@ namespace Owin.Security.Keycloak.Middleware
 
                     // Parse properties from state data
                     var properties = stateData[Constants.CacheTypes.AuthenticationProperties] as AuthenticationProperties;
-                    
+
                     //everything is ok until here, sign in the user
                     Context.Authentication.User = new ClaimsPrincipal(identity);
                     var signInResult = SignInAsAuthentication(identity, properties, Options.SignInAsAuthenticationType);
@@ -131,11 +126,11 @@ namespace Owin.Security.Keycloak.Middleware
                         return true;
                     }
                 }
-                catch (Exception exception)
+                catch (Exception ex) when (!(ex is SecurityTokenException) && !(ex is SecurityTokenExpiredException))
                 {
-                    _logger.Debug($"Returning false for {exception.Message} {exception.StackTrace}");
-                    await GenerateErrorResponseAsync(HttpStatusCode.InternalServerError, "Internal Server Error", exception.Message);
-                    return false;
+                    _logger.Error($"Returning false for {ex.Message} {ex.StackTrace}");
+                    await GenerateErrorResponseAsync(HttpStatusCode.InternalServerError, "Internal Server Error", ex.Message);
+                    return true;
                 }
             }
 
@@ -169,7 +164,7 @@ namespace Owin.Security.Keycloak.Middleware
                 }
 
                 var challenge = Helper.LookupChallenge(Options.AuthenticationType, Options.AuthenticationMode);
-                
+
                 if (challenge == null) return;
 
                 _logger.Debug($"ApplyResponseChallengeAsync for 401.Redirecting");
@@ -182,7 +177,7 @@ namespace Owin.Security.Keycloak.Middleware
         private bool SignInAsAuthentication(ClaimsIdentity identity, AuthenticationProperties authProperties = null,
             string signInAuthType = null)
         {
-          
+
             if (signInAuthType == Options.AuthenticationType)
             {
                 _logger.Warn($"SignInAuthType matches configured IIdentity AuthenticationType {signInAuthType}");
@@ -215,14 +210,14 @@ namespace Owin.Security.Keycloak.Middleware
                     ExpiresUtc = DateTime.Now.Add(Options.SignInAsAuthenticationExpiration)
                 };
             }
-            
+
             // Parse expiration date-time
             var expirations = new List<string>
             {
                 identity.Claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.RefreshTokenExpiration)?.Value,
                 identity.Claims.FirstOrDefault(c => c.Type == Constants.ClaimTypes.AccessTokenExpiration)?.Value
             };
-            
+
             foreach (var expStr in expirations)
             {
                 DateTime expDate;
@@ -258,12 +253,6 @@ namespace Owin.Security.Keycloak.Middleware
                 catch (AuthenticationException)
                 {
                     Context.Authentication.SignOut(origIdentity.AuthenticationType);
-                }
-                // ReSharper disable once RedundantCatchClause
-                catch (Exception)
-                {
-                    // TODO: Some kind of exception logging, maybe log the user out
-                    throw;
                 }
             }
         }
@@ -386,7 +375,7 @@ namespace Owin.Security.Keycloak.Middleware
             {
                 await OidcDataManager.HttpLogoutPost(firstOrDefault.Value, Options, uri);
             }
-            
+
             //redirect to relogin
             var challenge = Helper.LookupChallenge(Options.AuthenticationType, Options.AuthenticationMode);
 
