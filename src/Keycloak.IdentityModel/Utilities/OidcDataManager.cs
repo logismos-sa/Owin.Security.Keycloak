@@ -414,6 +414,8 @@ namespace Keycloak.IdentityModel.Utilities
                 throw new Exception("Invalid PostLogoutRedirectUrl option: Not a valid relative/absolute URL");
             
             parameters.Add(Protocols.OpenIdConnectParameterNames.PostLogoutRedirectUri, postLogoutRedirectUrl);
+            //As of KC 26.3.5 Either the parameter 'client_id' or the parameter 'id_token_hint' is required when 'post_logout_redirect_uri' is used
+            parameters.Add(Protocols.OpenIdConnectParameterNames.ClientId, _options.ClientId);
 
             return new FormUrlEncodedContent(parameters);
         }
