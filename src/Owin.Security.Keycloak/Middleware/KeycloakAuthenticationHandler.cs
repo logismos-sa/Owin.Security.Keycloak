@@ -2,6 +2,7 @@
 using Keycloak.IdentityModel.Models.EventArgs;
 using Keycloak.IdentityModel.Models.Responses;
 using Keycloak.IdentityModel.Utilities;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.DataHandler;
@@ -131,11 +132,11 @@ namespace Owin.Security.Keycloak.Middleware
                         return true;
                     }
                 }
-                catch (Exception exception)
+                catch (Exception ex) when (!(ex is SecurityTokenException) && !(ex is SecurityTokenExpiredException))
                 {
-                    _logger.Debug($"Returning false for {exception.Message} {exception.StackTrace}");
-                    await GenerateErrorResponseAsync(HttpStatusCode.InternalServerError, "Internal Server Error", exception.Message);
-                    return false;
+                    _logger.Error($"Returning false for {ex.Message} {ex.StackTrace}");
+                    await GenerateErrorResponseAsync(HttpStatusCode.InternalServerError, "Internal Server Error", ex.Message);
+                    return true;
                 }
             }
 

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Specialized;
-using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace Keycloak.IdentityModel.Models.Responses
 {

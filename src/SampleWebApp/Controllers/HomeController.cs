@@ -18,8 +18,15 @@ namespace SampleWebApp.Controllers
             return View();
 		}
 
+        /// <summary>
+        /// Random parameters to check redirect url works well
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="type"></param>
+        /// <param name="bsid"></param>
+        /// <returns></returns>
 		[Authorize]
-		public ActionResult About()
+		public ActionResult About(string id, string type, int bsid)
 		{
             ViewBag.Message = "Your application description page.";
 
@@ -46,11 +53,17 @@ namespace SampleWebApp.Controllers
         }
 
         [Authorize]
-        public ActionResult Logout()
+        public async Task<ActionResult> Logout()
         {
 
             bool isAuthenticated = HttpContext.GetOwinContext().Authentication.User.Identity.IsAuthenticated;
-            HttpContext.GetOwinContext().Authentication.SignOut();
+            var authenticationResult = await HttpContext.GetOwinContext().Authentication.AuthenticateAsync("keycloak_cookies");
+            authenticationResult.Properties.AllowRefresh = false;
+            authenticationResult.Properties.ExpiresUtc = DateTimeOffset.UtcNow.Subtract(TimeSpan.FromDays(3));
+            authenticationResult.Properties.RedirectUri = Url.Content("~/Home/Index");
+            //use Signout() or below signature to actually signout the user (note the "authMiddleware" must match the specified in Statup)
+            HttpContext.GetOwinContext().Authentication.SignOut(authenticationResult.Properties, "AuthMiddleware", authenticationResult.Identity.AuthenticationType);
+           
             return RedirectToAction("Index");
         }
 
